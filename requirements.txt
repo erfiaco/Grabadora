@@ -1,0 +1,14 @@
+cffi==1.17.1
+DateTime==5.5
+evdev==1.9.2
+numpy==2.0.2
+pycparser==2.22
+pynput==1.8.1
+python-xlib==0.33
+pytz==2025.2
+RPi.GPIO==0.7.1
+scipy==1.13.1
+six==1.17.0
+sounddevice==0.5.2
+soundfile==0.13.1
+zope.interface==7.2
