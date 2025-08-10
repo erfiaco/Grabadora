@@ -17,6 +17,11 @@ reproduciendo = False
 ultimo_archivo = None
 buffer = []
 esperando_inicio = True
+LOOPS_DIR = "loops"
+
+# Crear carpeta loops si no existe
+if not os.path.exists(LOOPS_DIR):
+    os.makedirs(LOOPS_DIR)
 
 # ===== BOTONES =====
 btn_grabar = Button(19)   # Iniciar grabacion
@@ -33,7 +38,7 @@ def mostrar_menu():
     print("=== MENU GRABADORA ===")
     print(f"Mute: {'ON' if mute else 'OFF'}")
     if ultimo_archivo:
-        print(f"Ultimo archivo: {ultimo_archivo}")
+        print(f"Ultimo archivo: {os.path.basename(ultimo_archivo)}")
     print("Esperando pulsacion de botones...")
 
 def callback(indata, frames, time_info, status):
@@ -50,7 +55,7 @@ def reproducir_archivo(nombre_archivo):
         print("\nArchivo no encontrado")
         return
     
-    print(f"\nReproduciendo {nombre_archivo} en bucle...")
+    print(f"\nReproduciendo {os.path.basename(nombre_archivo)} en bucle...")
     data, fs = sf.read(nombre_archivo, dtype='float32')
     
     reproduciendo = True
@@ -106,10 +111,10 @@ if grabando:
 # Guardar archivo si se grabo algo
 if buffer:
     audio = np.concatenate(buffer)
-    nombre_archivo = f"grabacion_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.wav"
+    nombre_archivo = os.path.join(LOOPS_DIR, f"grabacion_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.wav")
     wav.write(nombre_archivo, sample_rate, audio)
     ultimo_archivo = nombre_archivo
-    print(f"\nGrabacion guardada como: {nombre_archivo}")
+    print(f"\nGrabacion guardada como: {os.path.basename(nombre_archivo)}")
 
     # Reproduccion en bucle si se solicito
     if reproducir_despues:
