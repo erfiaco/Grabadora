@@ -27,7 +27,7 @@ if not os.path.exists(LOOPS_DIR):
 # ===== BOTONES =====
 btn_grabar = Button(19)   # Iniciar/detener grabacion
 btn_mute = Button(6)      # Silenciar/desmutear
-btn_play = Button(13)     # Detener grabación y reproducir en bucle
+btn_play = Button(13)     # Reproducir en bucle (siempre)
 btn_stop = Button(26)     # Detener reproducción/Salir (3 segundos)
 
 # ===== FUNCIONES =====
@@ -53,20 +53,20 @@ def callback_grabacion(indata, frames, time_info, status):
     if grabando and not exit_event.is_set():
         buffer.append(indata.copy())
 
-def reproducir_loop():
+def reproducir_en_bucle():
     global reproduciendo
     if not ultimo_archivo or not os.path.exists(ultimo_archivo):
         print("\nNo hay archivo para reproducir")
         return
     
-    print(f"\nReproduciendo {os.path.basename(ultimo_archivo)} en bucle...")
+    print(f"\nReproduciendo {os.path.basename(ultimo_archivo)} en bucle infinito...")
     data, fs = sf.read(ultimo_archivo, dtype='float32')
     
     reproduciendo = True
     while reproduciendo and not exit_event.is_set():
         sd.play(data, fs, device='pulse')
         sd.wait()
-        if not reproduciendo or exit_event.is_set():
+        if exit_event.is_set():
             break
 
 def guardar_grabacion():
@@ -100,8 +100,11 @@ def handler_senal(signum, frame):
 
 # ===== ACCIONES DE BOTONES =====
 def iniciar_detener_grabacion():
-    global grabando, buffer
-    if not reproduciendo and not exit_event.is_set():
+    global grabando, buffer, reproduciendo
+    if reproduciendo:
+        detener_reproduccion()
+    
+    if not exit_event.is_set():
         if not grabando:
             buffer = []
             grabando = True
@@ -118,24 +121,27 @@ def alternar_mute():
     print("\nMute " + ("activado" if mute else "desactivado"))
     mostrar_estado()
 
-def detener_grabar_y_reproducir():
+def manejar_play():
     global grabando, reproduciendo
     if grabando:
-        # Detener grabación primero
+        # Si está grabando, detener grabación y comenzar bucle
         grabando = False
         archivo = guardar_grabacion()
-        print("\nGrabación detenida, iniciando reproducción en bucle...")
-        
-        # Iniciar reproducción en bucle del nuevo archivo
         if archivo:
+            print("\nGrabación detenida, iniciando reproducción en bucle...")
             reproduciendo = True
-            Thread(target=reproducir_loop, daemon=True).start()
-    elif ultimo_archivo and not exit_event.is_set():
+            Thread(target=reproducir_en_bucle, daemon=True).start()
+    elif ultimo_archivo:
         if reproduciendo:
+            # Si ya está reproduciendo, detener
             detener_reproduccion()
         else:
+            # Si no está reproduciendo, iniciar bucle
+            print("\nIniciando reproducción en bucle...")
             reproduciendo = True
-            Thread(target=reproducir_loop, daemon=True).start()
+            Thread(target=reproducir_en_bucle, daemon=True).start()
+    else:
+        print("\nNo hay grabación para reproducir")
     mostrar_estado()
 
 def detener_reproduccion():
@@ -153,7 +159,7 @@ signal.signal(signal.SIGTERM, handler_senal)
 # Asignar funciones a botones
 btn_grabar.when_pressed = iniciar_detener_grabacion
 btn_mute.when_pressed = alternar_mute
-btn_play.when_pressed = detener_grabar_y_reproducir
+btn_play.when_pressed = manejar_play
 btn_stop.when_pressed = detener_reproduccion
 
 # ===== PROGRAMA PRINCIPAL =====
