@@ -3,9 +3,11 @@ import soundfile as sf
 import numpy as np
 import scipy.io.wavfile as wav
 import datetime
-import time
+import time as time
 import os
 from gpiozero import Button
+import LCD_I2C_classe as LCD
+lcd = LCD.LCD_I2C()
 
 # ===== CONFIGURACION =====
 sample_rate = 44100
@@ -24,10 +26,10 @@ if not os.path.exists(LOOPS_DIR):
     os.makedirs(LOOPS_DIR)
 
 # ===== BOTONES =====
-btn_grabar = Button(19)   # Iniciar grabacion
+btn_grabar = Button(26)   # Iniciar grabacion
 btn_mute = Button(6)      # Silenciar/desmutear
 btn_play = Button(13)     # Detener grabacion y reproducir desde inicio (loop)
-btn_stop = Button(26)     # Detener todo
+btn_stop = Button(19)     # Detener todo
 
 # ===== FUNCIONES =====
 def clear_screen():
@@ -36,10 +38,10 @@ def clear_screen():
 def mostrar_menu():
     clear_screen()
     print("=== MENU GRABADORA ===")
-    print(f"Mute: {'ON' if mute else 'OFF'}")
+    lcd.write(f"Mute: {'ON' if mute else 'OFF'}",2)
     if ultimo_archivo:
-        print(f"Ultimo archivo: {os.path.basename(ultimo_archivo)}")
-    print("Esperando pulsacion de botones...")
+        lcd.write(f"Ultimo archivo: {os.path.basename(ultimo_archivo)}",2)
+    lcd.write("Bienvenido",1)
 
 def callback(indata, frames, time_info, status):
     global mute
@@ -69,25 +71,26 @@ def iniciar_grabacion():
     if esperando_inicio:
         grabando = True
         esperando_inicio = False
-        print("\nComenzando grabacion...")
+        lcd.write("Grabando",1)
 
 def alternar_mute():
     global mute
     mute = not mute
-    print("\nMute activado" if mute else "\nMute desactivado")
+    lcd.write("Mute ON" if mute else "Mute OFF",2)
 
 def detener_y_reproducir():
     global grabando, reproducir_despues
     if grabando:
         reproducir_despues = True
         grabando = False
-        print("\nGrabacion detenida, reproduciendo en bucle...")
+        lcd.write("Stop, reproduciendo",1)
 
 def detener_todo():
     global grabando, reproduciendo
     grabando = False
     reproduciendo = False
-    print("\nTodo detenido")
+    lcd.write("Todo detenido",1)
+    lcd.clear()
 
 # ===== ASIGNAR FUNCIONES A BOTONES =====
 btn_grabar.when_pressed = iniciar_grabacion
@@ -96,6 +99,9 @@ btn_play.when_pressed = detener_y_reproducir
 btn_stop.when_pressed = detener_todo
 
 # ===== PROGRAMA PRINCIPAL =====
+lcd.write("hello world",1)  # Prueba en la línea 1
+time.sleep(2)  # Espera 2 segundos para verlo
+lcd.clear()
 mostrar_menu()
 
 # Espera para comenzar grabacion
@@ -120,4 +126,5 @@ if buffer:
     if reproducir_despues:
         reproducir_archivo(nombre_archivo)
 
-print("\nFin del programa")
+print("Fin del programa")
+lcd.clear()
