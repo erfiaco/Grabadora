@@ -8,6 +8,8 @@ import os
 import signal
 from gpiozero import Button
 from threading import Event, Thread
+import LCD_I2C_classe as LCD
+lcd = LCD.LCD_I2C()
 
 # ===== CONFIGURACION =====
 sample_rate = 44100
@@ -25,10 +27,10 @@ if not os.path.exists(LOOPS_DIR):
     os.makedirs(LOOPS_DIR)
 
 # ===== BOTONES =====
-btn_grabar = Button(19)   # Iniciar/detener grabacion
+btn_grabar = Button(26)   # Iniciar/detener grabacion
 btn_mute = Button(6)      # Silenciar/desmutear
 btn_play = Button(13)     # Reproducir en bucle (siempre)
-btn_stop = Button(26)     # Detener reproducción/Salir (3 segundos)
+btn_stop = Button(19)     # Detener reproducción/Salir (3 segundos)
 
 # ===== FUNCIONES =====
 def clear_screen():
@@ -43,6 +45,9 @@ def mostrar_estado():
         print(f"Último loop: {os.path.basename(ultimo_archivo)}")
     print("Esperando acción...")
     print("Mantén STOP 3 segundos para salir")
+    lcd.write(f"Estado: {'Grabando' if grabando else 'Reproduciendo' if reproduciendo else 'En espera'}",1)
+    lcd.write(f"Mute: {'ON' if mute else 'OFF'}",2)
+
 
 def callback_grabacion(indata, frames, time_info, status):
     global mute
@@ -178,6 +183,7 @@ except Exception as e:
     print(f"Error: {str(e)}")
 finally:
     print("\nLimpiando recursos...")
+    lcd.clear()
     grabando = False
     reproduciendo = False
     sd.stop()
