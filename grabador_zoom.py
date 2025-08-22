@@ -99,7 +99,7 @@ btn_play.when_pressed = detener_y_reproducir
 btn_stop.when_pressed = detener_todo
 
 # ===== PROGRAMA PRINCIPAL =====
-lcd.write("hello world",1)  # Prueba en la línea 1
+lcd.write("hello world",1)  # Prueba en la l1
 time.sleep(2)  # Espera 2 segundos para verlo
 lcd.clear()
 mostrar_menu()

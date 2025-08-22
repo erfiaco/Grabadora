@@ -11,6 +11,9 @@ from threading import Event, Thread
 import LCD_I2C_classe as LCD
 lcd = LCD.LCD_I2C()
 
+# Force gpiozero to use RPi.GPIO
+os.environ["GPIOZERO_PIN_FACTORY"] = "rpigpio"
+
 # ===== CONFIGURACION =====
 sample_rate = 44100
 channels = 2
@@ -22,6 +25,7 @@ buffer = []
 LOOPS_DIR = "loops"
 exit_event = Event()
 
+
 # Crear carpeta loops si no existe
 if not os.path.exists(LOOPS_DIR):
     os.makedirs(LOOPS_DIR)
@@ -30,7 +34,7 @@ if not os.path.exists(LOOPS_DIR):
 btn_grabar = Button(26)   # Iniciar/detener grabacion
 btn_mute = Button(6)      # Silenciar/desmutear
 btn_play = Button(13)     # Reproducir en bucle (siempre)
-btn_stop = Button(19)     # Detener reproducción/Salir (3 segundos)
+btn_stop = Button(19)     # Detener reproducclir (3 segundos)
 
 # ===== FUNCIONES =====
 def clear_screen():
@@ -42,9 +46,9 @@ def mostrar_estado():
     print(f"Mute: {'ON' if mute else 'OFF'}")
     print(f"Estado: {'Grabando' if grabando else 'Reproduciendo' if reproduciendo else 'En espera'}")
     if ultimo_archivo:
-        print(f"Último loop: {os.path.basename(ultimo_archivo)}")
-    print("Esperando acción...")
-    print("Mantén STOP 3 segundos para salir")
+        print(f"timo loop: {os.path.basename(ultimo_archivo)}")
+    print("Esperando acci")
+    print("MantOP 3 segundos para salir")
     lcd.write(f"Estado: {'Grabando' if grabando else 'Reproduciendo' if reproduciendo else 'En espera'}",1)
     lcd.write(f"Mute: {'ON' if mute else 'OFF'}",2)
 
@@ -61,18 +65,37 @@ def callback_grabacion(indata, frames, time_info, status):
 def reproducir_en_bucle():
     global reproduciendo
     if not ultimo_archivo or not os.path.exists(ultimo_archivo):
-        print("\nNo hay archivo para reproducir")
+        print(f"\nNo hay archivo para reproducir. ultimo_archivo: {ultimo_archivo}")
         return
     
     print(f"\nReproduciendo {os.path.basename(ultimo_archivo)} en bucle infinito...")
     data, fs = sf.read(ultimo_archivo, dtype='float32')
     
     reproduciendo = True
+    loop_count = 0
+    
     while reproduciendo and not exit_event.is_set():
+                
+        # Iniciar reproducci
         sd.play(data, fs, device='pulse')
+        
+        # ESPERA ACTIVA - Reemplaza sd.wait() para evitar bloqueo
+        # duration = len(data) / fs  # Duraciegundos
+        # start_time = time.time()
+        #sd.wait sustituye a start ti,e.... etc
         sd.wait()
-        if exit_event.is_set():
-            break
+        
+        # Verificar perimente si debemos detenernos
+        #while (time.time() - start_time < duration and 
+        #reproduciendo and not exit_event.is_set()):
+        #time.sleep(0.01)  # Pequesa de 10ms para ser responsivo
+        
+        # Limpiar por si acaso
+        if not reproduciendo or exit_event.is_set():
+            sd.stop()
+    
+    print("Reproducción terminada")
+    reproduciendo = False
 
 def guardar_grabacion():
     global buffer, ultimo_archivo
@@ -113,51 +136,56 @@ def iniciar_detener_grabacion():
         if not grabando:
             buffer = []
             grabando = True
-            print("\nIniciando grabación...")
+            print("\nIniciando grabaci")
         else:
-            grabando = False
-            print("\nDeteniendo grabación...")
-            guardar_grabacion()
+            print("heeey")
+            #grabando = False
+            #print("\nDeteniendo grabaci")
+            #guardar_grabacion()
         mostrar_estado()
 
 def alternar_mute():
     global mute
     mute = not mute
-    print("\nMute " + ("activado" if mute else "desactivado"))
-    mostrar_estado()
+    lcd.write("Mute ON" if mute else "Mute OFF",2)
 
 def manejar_play():
     global grabando, reproduciendo
     if grabando:
-        # Si está grabando, detener grabación y comenzar bucle
+        # Si estando, detener grabacicomenzar bucle
         grabando = False
         archivo = guardar_grabacion()
         if archivo:
-            print("\nGrabación detenida, iniciando reproducción en bucle...")
+            print("\nGrabacitenida, iniciando reproducc bucle...")
             reproduciendo = True
-            Thread(target=reproducir_en_bucle, daemon=True).start()
+            Thread(target=reproducir_en_bucle, daemon=False).start()
     elif ultimo_archivo:
         if reproduciendo:
-            # Si ya está reproduciendo, detener
+            # Si ya estoduciendo, detener
             detener_reproduccion()
         else:
-            # Si no está reproduciendo, iniciar bucle
-            print("\nIniciando reproducción en bucle...")
+            # Si no estoduciendo, iniciar bucle
+            print("\nIniciando reproducci bucle...")
             reproduciendo = True
-            Thread(target=reproducir_en_bucle, daemon=True).start()
+            Thread(target=reproducir_en_bucle, daemon=False).start()
     else:
-        print("\nNo hay grabación para reproducir")
+        print("\nNo hay grabacra reproducir")
     mostrar_estado()
 
 def detener_reproduccion():
-    global reproduciendo
+    global reproduciendo, grabando#, playback_thread
     if reproduciendo:
         reproduciendo = False
-        sd.stop()
+        #sd.stop()
+        #playback_thread = None
         print("\nReproducción detenida")
-        mostrar_estado()
+    if grabando:
+        grabando = False
+        print("\nGrabación detenida por STOP")
+        guardar_grabacion()
+    mostrar_estado()
 
-# Configurar manejadores de señales
+# Configurar manejadores de se
 signal.signal(signal.SIGINT, handler_senal)
 signal.signal(signal.SIGTERM, handler_senal)
 
@@ -171,7 +199,7 @@ btn_stop.when_pressed = detener_reproduccion
 mostrar_estado()
 
 # Iniciar hilos
-Thread(target=monitorear_salida, daemon=True).start()
+Thread(target=monitorear_salida, daemon=False).start()
 
 try:
     with sd.InputStream(samplerate=sample_rate, channels=channels, 
